@@ -44,3 +44,10 @@ class SingleTweetError extends FeedState {
   final String message;
   SingleTweetError(this.message);
 }
+
+class RecentTweetLoaded extends FeedState {
+  final List<Tweet> tweets;
+  final bool hasMore;
+
+  RecentTweetLoaded({required this.tweets, required this.hasMore});
+}

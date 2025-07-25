@@ -17,7 +17,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   late final List<Widget> _screens;
-
   @override
   void initState() {
     super.initState();
@@ -26,7 +25,10 @@ class _MainScreenState extends State<MainScreen> {
         likeApiService: widget.serviceProvider.likeApiService,
         feedApiService: widget.serviceProvider.feedApiService,
       ),
-      const SearchScreen(),
+      SearchScreen(
+        feedApiService: widget.serviceProvider.feedApiService,
+        userApiService: widget.serviceProvider.userApiService,
+      ),
       const TrendingScreen(),
       const ProfileScreen(),
     ];

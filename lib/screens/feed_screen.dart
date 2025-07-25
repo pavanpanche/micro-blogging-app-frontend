@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:subtxt_blog/bloc/feed_bloc.dart';
 import 'package:subtxt_blog/bloc/feed_event.dart';
 import 'package:subtxt_blog/bloc/feed_state.dart';
+import 'package:subtxt_blog/models/tweet_model.dart';
 import 'package:subtxt_blog/services/feed_api_serivce.dart';
 import 'package:subtxt_blog/services/like_api_service.dart';
 import 'package:subtxt_blog/widgets/tweet_card.dart';
@@ -48,9 +49,23 @@ class FeedScreen extends StatelessWidget {
                     tweet: tweet,
                     onLikePressed: () async {
                       final liked = await likeApiService.toggleLike(tweet.id);
-                      tweet.isLiked = liked;
-                      tweet.likeCount = await likeApiService.getLikeCount(
+                      final likeCount = await likeApiService.getLikeCount(
                         tweet.id,
+                      );
+
+                      // create a new updated tweet
+                      final updatedTweet = tweet.copyWith(
+                        isLiked: liked,
+                        likeCount: likeCount,
+                      );
+
+                      // replace the tweet in the list
+                      final updatedTweets = List<Tweet>.from(tweets);
+                      updatedTweets[index] = updatedTweet;
+
+                      // update the BLoC state
+                      context.read<FeedBloc>().add(
+                        UpdateTweetList(updatedTweets),
                       );
                     },
                   );

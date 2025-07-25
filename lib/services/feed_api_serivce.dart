@@ -45,4 +45,29 @@ class FeedApiService {
     final response = await _dio.get('/$id');
     return Tweet.fromJson(response.data);
   }
+
+  Future<List<Tweet>> fetchRecentTweets({int page = 0, int size = 10}) async {
+    final response = await _dio.get(
+      '/recent',
+      queryParameters: {'page': page, 'size': size},
+    );
+
+    return (response.data['content'] as List)
+        .map((json) => Tweet.fromJson(json))
+        .toList();
+  }
+
+  Future<List<Tweet>> searchTweets(String query) async {
+    final response = await _dio.get(
+      '/search',
+      queryParameters: {'query': query},
+    );
+
+    return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
+  }
+
+  Future<List<Tweet>> getTweetsByUsername(String username) async {
+    final response = await _dio.get('/user/$username');
+    return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
+  }
 }
