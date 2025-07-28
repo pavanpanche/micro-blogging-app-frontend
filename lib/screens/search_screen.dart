@@ -5,17 +5,20 @@ import 'package:subtxt_blog/models/user_search.dart';
 import 'package:subtxt_blog/screens/profile_screen.dart';
 import 'package:subtxt_blog/screens/tweet_search_screen.dart';
 import 'package:subtxt_blog/services/feed_api_serivce.dart';
+import 'package:subtxt_blog/services/follow_api_service.dart';
 import 'package:subtxt_blog/services/user_api_service.dart';
 import 'package:subtxt_blog/widgets/user_card.dart';
 
 class SearchScreen extends StatefulWidget {
   final FeedApiService feedApiService;
   final UserApiService userApiService;
+  final FollowApiService followApiService;
 
   const SearchScreen({
     super.key,
     required this.feedApiService,
     required this.userApiService,
+    required this.followApiService,
   });
 
   @override
@@ -24,8 +27,8 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<String> _searchHistory = [];
   final FocusNode _focusNode = FocusNode();
+  final List<String> _searchHistory = [];
 
   List<UserSearch> _userSuggestions = [];
   List<Tweet> _tweetResults = [];
@@ -35,14 +38,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-
     _debounce = Timer(const Duration(milliseconds: 400), () async {
-      if (!mounted) return;
-
       if (value.trim().isNotEmpty) {
-        if (!mounted) return;
         setState(() => _loading = true);
-
         try {
           final users = await widget.userApiService.searchUsers(value);
           final tweets = await widget.feedApiService.searchTweets(value);
@@ -55,16 +53,15 @@ class _SearchScreenState extends State<SearchScreen> {
         } catch (e) {
           debugPrint('Search error: $e');
         } finally {
-          if (mounted) {
-            setState(() => _loading = false);
-          }
+          if (mounted) setState(() => _loading = false);
         }
       } else {
-        if (!mounted) return;
-        setState(() {
-          _userSuggestions.clear();
-          _tweetResults.clear();
-        });
+        if (mounted) {
+          setState(() {
+            _userSuggestions.clear();
+            _tweetResults.clear();
+          });
+        }
       }
     });
   }
@@ -161,14 +158,44 @@ class _SearchScreenState extends State<SearchScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    ProfileScreen(username: user.username),
+                                builder: (_) => ProfileScreen(
+                                  username: user.username,
+                                  feedApiService: widget.feedApiService,
+                                  userApiService: widget.userApiService,
+                                  followApiService: widget.followApiService,
+                                ),
                               ),
                             );
                           },
-                          child: UserCard(user: user),
+                          child: UserCard(
+                            username: user.username,
+                            followerCount: user.followerCount,
+                            followingCount: user.followingCount,
+                            onFollowersTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/followers',
+                                arguments: user.username,
+                              );
+                            },
+                            onFollowingTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/following',
+                                arguments: user.username,
+                              );
+                            },
+                            onTweetsTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/userTweets',
+                                arguments: user.username,
+                              );
+                            },
+                          ),
                         ),
                       ),
+
                       const SizedBox(height: 16),
                     ],
                   ),

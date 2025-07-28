@@ -26,8 +26,9 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<DeleteTweet>(_onDeleteTweet);
     on<FetchTweetById>(_onFetchTweetById);
     on<FetchRecentTweets>(_onFetchRecentTweets);
+    on<FetchTweetsByUsername>(_onFetchTweetsByUsername);
   }
-
+  // this is for feed screen
   Future<void> _onFetchFeed(FetchFeed event, Emitter<FeedState> emit) async {
     if (event.reset) {
       _currentPage = 0;
@@ -149,6 +150,20 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       _recentPage++;
 
       emit(RecentTweetLoaded(tweets: _recentTweets, hasMore: _recentHasMore));
+    } catch (e) {
+      emit(FeedError(e.toString()));
+    }
+  }
+
+  Future<void> _onFetchTweetsByUsername(
+    FetchTweetsByUsername event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(FeedLoading());
+
+    try {
+      final tweets = await feedApiService.getTweetsByUsername(event.username);
+      emit(TweetsByUserLoaded(tweets));
     } catch (e) {
       emit(FeedError(e.toString()));
     }

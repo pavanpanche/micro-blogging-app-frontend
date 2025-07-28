@@ -27,6 +27,7 @@ class FeedApiService {
     return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
   }
 
+  //this the current user api we will use for profile screen
   Future<Tweet> createTweet(TweetRequest request) async {
     final response = await _dio.post('/', data: request.toJson());
     return Tweet.fromJson(response.data);
@@ -67,7 +68,7 @@ class FeedApiService {
   }
 
   Future<List<Tweet>> getTweetsByUsername(String username) async {
-    final response = await _dio.get('/user/$username');
+    final response = await _dio.get('/user/tweets/$username');
     return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
   }
 }

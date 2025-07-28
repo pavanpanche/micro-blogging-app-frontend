@@ -3,11 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:subtxt_blog/bloc/feed_bloc.dart';
 import 'package:subtxt_blog/bloc/feed_event.dart';
 import 'package:subtxt_blog/bloc/feed_state.dart';
+import 'package:subtxt_blog/screens/tweet_details_screen.dart';
 import 'package:subtxt_blog/widgets/tweet_card.dart';
 import 'package:subtxt_blog/models/tweet_model.dart';
+import 'package:subtxt_blog/services/feed_api_serivce.dart';
 
 class TrendingScreen extends StatefulWidget {
-  const TrendingScreen({super.key});
+  final FeedApiService feedApiService;
+
+  const TrendingScreen({super.key, required this.feedApiService});
 
   @override
   State<TrendingScreen> createState() => _TrendingScreenState();
@@ -45,7 +49,6 @@ class _TrendingScreenState extends State<TrendingScreen> {
       likeCount: tweet.isLiked ? tweet.likeCount - 1 : tweet.likeCount + 1,
     );
     context.read<FeedBloc>().add(RefreshTweet(updatedTweet));
-    // Optional: Add backend like/unlike API call here.
   }
 
   @override
@@ -84,6 +87,17 @@ class _TrendingScreenState extends State<TrendingScreen> {
                 return TweetCard(
                   tweet: tweet,
                   onLikePressed: () => _onLikePressed(tweet),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TweetDetailScreen(
+                          tweetId: tweet.id,
+                          feedApiService: widget.feedApiService,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

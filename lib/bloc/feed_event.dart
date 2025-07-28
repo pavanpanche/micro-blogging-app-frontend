@@ -46,3 +46,9 @@ class UpdateTweetList extends FeedEvent {
   final List<Tweet> updatedTweets;
   UpdateTweetList(this.updatedTweets);
 }
+
+class FetchTweetsByUsername extends FeedEvent {
+  final String username;
+
+  FetchTweetsByUsername(this.username);
+}

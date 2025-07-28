@@ -1,5 +1,6 @@
 abstract class SearchEvent {}
 
+// get user by username
 class SearchUsers extends SearchEvent {
   final String query;
   SearchUsers(this.query);

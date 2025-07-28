@@ -6,12 +6,16 @@ class UserApiService {
   final Dio _dio;
 
   UserApiService(AuthService authService)
-    : _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/users')) {
+    : _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/user')) {
     _dio.interceptors.add(authService.authInterceptor());
   }
 
+  //get user by username or keyword
   Future<List<UserSearch>> searchUsers(String query) async {
-    final response = await _dio.get('/search', queryParameters: {'q': query});
+    final response = await _dio.get(
+      '/search',
+      queryParameters: {'username': query},
+    );
 
     return (response.data as List)
         .map((json) => UserSearch.fromJson(json))

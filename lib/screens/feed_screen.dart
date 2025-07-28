@@ -4,6 +4,7 @@ import 'package:subtxt_blog/bloc/feed_bloc.dart';
 import 'package:subtxt_blog/bloc/feed_event.dart';
 import 'package:subtxt_blog/bloc/feed_state.dart';
 import 'package:subtxt_blog/models/tweet_model.dart';
+import 'package:subtxt_blog/screens/tweet_details_screen.dart';
 import 'package:subtxt_blog/services/feed_api_serivce.dart';
 import 'package:subtxt_blog/services/like_api_service.dart';
 import 'package:subtxt_blog/widgets/tweet_card.dart';
@@ -48,24 +49,34 @@ class FeedScreen extends StatelessWidget {
                   return TweetCard(
                     tweet: tweet,
                     onLikePressed: () async {
+                      final feedBloc = context.read<FeedBloc>();
+
                       final liked = await likeApiService.toggleLike(tweet.id);
                       final likeCount = await likeApiService.getLikeCount(
                         tweet.id,
                       );
 
-                      // create a new updated tweet
                       final updatedTweet = tweet.copyWith(
                         isLiked: liked,
                         likeCount: likeCount,
                       );
 
-                      // replace the tweet in the list
                       final updatedTweets = List<Tweet>.from(tweets);
                       updatedTweets[index] = updatedTweet;
 
-                      // update the BLoC state
-                      context.read<FeedBloc>().add(
-                        UpdateTweetList(updatedTweets),
+                      feedBloc.add(UpdateTweetList(updatedTweets));
+                    },
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TweetDetailScreen(
+                            tweetId: tweet.id,
+
+                            ///error
+                            feedApiService: feedApiService,
+                          ),
+                        ),
                       );
                     },
                   );

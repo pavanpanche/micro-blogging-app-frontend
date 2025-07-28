@@ -26,6 +26,8 @@ class Tweet {
     );
   }
 
+  get createdAt => null;
+
   /// ✅ Add this copyWith method
   Tweet copyWith({
     int? id,

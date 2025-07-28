@@ -18,8 +18,6 @@ class FeedError extends FeedState {
   FeedError(this.message);
 }
 
-/// Optional: You can use these if you want to show success feedback in UI
-
 class TweetCreated extends FeedState {
   final Tweet tweet;
   TweetCreated(this.tweet);
@@ -50,4 +48,10 @@ class RecentTweetLoaded extends FeedState {
   final bool hasMore;
 
   RecentTweetLoaded({required this.tweets, required this.hasMore});
+}
+
+class TweetsByUserLoaded extends FeedState {
+  final List<Tweet> tweets;
+
+  TweetsByUserLoaded(this.tweets);
 }

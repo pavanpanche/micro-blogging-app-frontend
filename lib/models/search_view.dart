@@ -7,10 +7,21 @@ import 'package:subtxt_blog/models/tweet_model.dart';
 import 'package:subtxt_blog/models/user_search.dart';
 import 'package:subtxt_blog/screens/profile_screen.dart';
 import 'package:subtxt_blog/screens/tweet_search_screen.dart';
+import 'package:subtxt_blog/services/feed_api_serivce.dart';
+import 'package:subtxt_blog/services/follow_api_service.dart';
+import 'package:subtxt_blog/services/user_api_service.dart';
 
 class SearchView extends StatefulWidget {
-  const SearchView({super.key});
+  final FeedApiService feedApiService;
+  final FollowApiService followApiService;
+  final UserApiService userApiService;
 
+  const SearchView({
+    super.key,
+    required this.feedApiService,
+    required this.followApiService,
+    required this.userApiService,
+  });
   @override
   State<SearchView> createState() => _SearchViewState();
 }
@@ -96,8 +107,12 @@ class _SearchViewState extends State<SearchView> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ProfileScreen(username: user.username),
+                              builder: (_) => ProfileScreen(
+                                username: user.username,
+                                feedApiService: widget.feedApiService,
+                                followApiService: widget.followApiService,
+                                userApiService: widget.userApiService,
+                              ),
                             ),
                           );
                         },

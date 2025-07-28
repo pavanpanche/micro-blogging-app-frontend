@@ -16,6 +16,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     on<ClearSearchResults>((event, emit) => emit(SearchInitial()));
   }
 
+  //get user by username
   Future<void> _onSearchUsers(
     SearchUsers event,
     Emitter<SearchState> emit,
