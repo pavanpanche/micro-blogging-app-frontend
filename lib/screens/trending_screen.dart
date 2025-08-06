@@ -1,111 +1,162 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:subtxt_blog/bloc/feed_bloc.dart';
-import 'package:subtxt_blog/bloc/feed_event.dart';
-import 'package:subtxt_blog/bloc/feed_state.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+import 'package:subtxt_blog/provider/like_provider.dart';
+import 'package:subtxt_blog/provider/tweet_provider.dart';
 import 'package:subtxt_blog/screens/tweet_details_screen.dart';
+import 'package:subtxt_blog/services/tweet_api_serivce.dart';
 import 'package:subtxt_blog/widgets/tweet_card.dart';
-import 'package:subtxt_blog/models/tweet_model.dart';
-import 'package:subtxt_blog/services/feed_api_serivce.dart';
 
 class TrendingScreen extends StatefulWidget {
-  final FeedApiService feedApiService;
+  final TweetApiService tweetApiService;
 
-  const TrendingScreen({super.key, required this.feedApiService});
+  const TrendingScreen({super.key, required this.tweetApiService});
 
   @override
   State<TrendingScreen> createState() => _TrendingScreenState();
 }
 
 class _TrendingScreenState extends State<TrendingScreen> {
+  final TextEditingController _hashtagController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  int? currentUserId;
 
   @override
   void initState() {
     super.initState();
-    context.read<FeedBloc>().add(FetchRecentTweets(reset: true));
+
+    final tweetProvider = context.read<TweetProvider>();
+    tweetProvider.setService(widget.tweetApiService);
+
+    _loadUserId();
+
+    Future.microtask(() {
+      tweetProvider.fetchRecentTweets();
+    });
 
     _scrollController.addListener(() {
-      final bloc = context.read<FeedBloc>();
-      final state = bloc.state;
       if (_scrollController.position.pixels >=
               _scrollController.position.maxScrollExtent - 200 &&
-          state is RecentTweetLoaded &&
-          state.hasMore) {
-        bloc.add(FetchRecentTweets());
+          tweetProvider.hasMore &&
+          !tweetProvider.isLoading) {
+        tweetProvider.fetchNextFeedPage();
       }
     });
   }
 
+  Future<void> _loadUserId() async {
+    const storage = FlutterSecureStorage();
+    final idStr = await storage.read(key: 'userId');
+    if (idStr != null) {
+      setState(() {
+        currentUserId = int.tryParse(idStr);
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _hashtagController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onLikePressed(Tweet tweet) {
-    final updatedTweet = tweet.copyWith(
-      isLiked: !tweet.isLiked,
-      likeCount: tweet.isLiked ? tweet.likeCount - 1 : tweet.likeCount + 1,
-    );
-    context.read<FeedBloc>().add(RefreshTweet(updatedTweet));
+  void _searchHashtag() {
+    final tag = _hashtagController.text.trim();
+    if (tag.isNotEmpty) {
+      context.read<TweetProvider>().fetchTweetsByHashtag(tag);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FeedBloc, FeedState>(
-      builder: (context, state) {
-        if (state is FeedLoading || state is FeedInitial) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is FeedError) {
-          return Center(child: Text("Error: ${state.message}"));
-        } else if (state is RecentTweetLoaded) {
-          final tweets = state.tweets;
+    final tweetProvider = context.watch<TweetProvider>();
+    final likeProvider = context.watch<LikeProvider>();
 
-          if (tweets.isEmpty) {
-            return const Center(child: Text("No trending tweets found."));
-          }
+    final tweets = tweetProvider.tweets;
+    final isLoading = tweetProvider.isLoading;
+    final hasMore = tweetProvider.hasMore;
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<FeedBloc>().add(FetchRecentTweets(reset: true));
-            },
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: tweets.length + 1,
-              itemBuilder: (context, index) {
-                if (index == tweets.length) {
-                  return state.hasMore
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : const SizedBox.shrink();
-                }
-
-                final tweet = tweets[index];
-                return TweetCard(
-                  tweet: tweet,
-                  onLikePressed: () => _onLikePressed(tweet),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TweetDetailScreen(
-                          tweetId: tweet.id,
-                          feedApiService: widget.feedApiService,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+    return Scaffold(
+      appBar: AppBar(title: const Text("Trending")),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _hashtagController,
+                    decoration: const InputDecoration(
+                      hintText: "#hashtag",
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _searchHashtag(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _searchHashtag,
+                  child: const Text("Search"),
+                ),
+              ],
             ),
-          );
-        }
+          ),
+          Expanded(
+            child: isLoading && tweets.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<TweetProvider>().fetchRecentTweets(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: tweets.length + (hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= tweets.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-        return const Center(child: Text("Unknown state"));
-      },
+                        final tweet = tweets[index];
+
+                        return TweetCard(
+                          tweet: tweet,
+                          currentUserId: currentUserId,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    TweetDetailScreen(tweetId: tweet.id),
+                              ),
+                            );
+                          },
+                          onLikePressed: () async {
+                            final response = await likeProvider.toggleLike(
+                              tweet.id,
+                            );
+                            if (response != null) {
+                              final updatedTweet = tweet.copyWith(
+                                isLiked: response.likedByCurrentUser,
+                                likeCount: response.totalLikes,
+                              );
+                              tweetProvider.updateTweetInList(
+                                index,
+                                updatedTweet,
+                              );
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

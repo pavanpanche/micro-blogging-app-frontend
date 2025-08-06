@@ -1,31 +1,18 @@
-// profile_screen.dart
+// ✅ FINAL UPDATED PROFILE SCREEN WITH FOLLOW/UNFOLLOW INTEGRATION
+
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:subtxt_blog/bloc/follow_bloc.dart';
-import 'package:subtxt_blog/bloc/follow_event.dart';
-import 'package:subtxt_blog/bloc/follow_state.dart';
-import 'package:subtxt_blog/bloc/feed_bloc.dart';
-import 'package:subtxt_blog/bloc/feed_event.dart';
-import 'package:subtxt_blog/bloc/feed_state.dart';
-import 'package:subtxt_blog/screens/follower_screen.dart';
-import 'package:subtxt_blog/screens/following_screen.dart';
-import 'package:subtxt_blog/services/feed_api_serivce.dart';
-import 'package:subtxt_blog/services/follow_api_service.dart';
-import 'package:subtxt_blog/services/user_api_service.dart';
+import 'package:provider/provider.dart';
+import 'package:subtxt_blog/provider/like_provider.dart';
+import 'package:subtxt_blog/provider/profile_provider.dart';
+import 'package:subtxt_blog/screens/edit_profile_screen.dart';
+import 'package:subtxt_blog/screens/tweet_details_screen.dart';
+import 'package:subtxt_blog/widgets/user_card.dart';
+import 'package:subtxt_blog/widgets/tweet_card.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final String username;
-  final FeedApiService feedApiService;
-  final UserApiService userApiService;
-  final FollowApiService followApiService;
+  final String? username;
 
-  const ProfileScreen({
-    super.key,
-    required this.username,
-    required this.feedApiService,
-    required this.userApiService,
-    required this.followApiService,
-  });
+  const ProfileScreen({super.key, this.username});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -35,102 +22,249 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<FollowBloc>().add(LoadFollowData(widget.username));
-    context.read<FeedBloc>().add(FetchTweetsByUsername(widget.username));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().loadProfile(username: widget.username);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
+    final likeProvider = context.watch<LikeProvider>();
+
+    final isCurrentUser = profileProvider.isCurrentUser;
+    final username = profileProvider.username;
+    final isFollowing = profileProvider.isFollowing;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.username)),
-      body: BlocBuilder<FollowBloc, FollowState>(
-        builder: (context, followState) {
-          return Column(
-            children: [
-              if (followState.loading) CircularProgressIndicator(),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              FollowersScreen(username: widget.username),
-                        ),
-                      );
-                    },
-                    child: Column(
+      appBar: AppBar(
+        title: Text(
+          isCurrentUser
+              ? 'My Profile'
+              : username != null
+              ? '@$username'
+              : 'Profile',
+        ),
+        actions: [
+          if (isCurrentUser)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: "Edit Profile",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => EditProfileScreen()),
+                );
+              },
+            ),
+        ],
+      ),
+      body: profileProvider.isLoading || profileProvider.username == null
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: () =>
+                  profileProvider.loadProfile(username: widget.username),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
                       children: [
-                        Text(
-                          'Followers',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        UserCard(
+                          username: profileProvider.username!,
+                          followerCount: profileProvider.followers.length,
+                          followingCount: profileProvider.following.length,
+                          onFollowersTap: () => _showUserListDialog(
+                            context,
+                            'Followers',
+                            profileProvider.followers,
+                          ),
+                          onFollowingTap: () => _showUserListDialog(
+                            context,
+                            'Following',
+                            profileProvider.following,
+                          ),
+                          onTweetsTap: () {},
                         ),
-                        Text('${followState.followers}'),
+                        if (!isCurrentUser)
+                          Positioned(
+                            top: 16,
+                            right: 20,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (isFollowing) {
+                                  await profileProvider.unfollowUser(
+                                    profileProvider.username!,
+                                  );
+                                } else {
+                                  await profileProvider.followUser(
+                                    profileProvider.username!,
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isFollowing
+                                    ? Colors.grey[300]
+                                    : Colors.blue,
+                                foregroundColor: isFollowing
+                                    ? Colors.black
+                                    : Colors.white,
+                              ),
+                              child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+                            ),
+                          ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 30),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              FollowingScreen(username: widget.username),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        "Tweets",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
-                    child: Column(
-                      children: [
-                        Text(
-                          'Following',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text('${followState.following}'),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-
-              ElevatedButton(
-                onPressed: () {
-                  context.read<FollowBloc>().add(
-                    ToggleFollowUser(widget.username),
-                  );
-                },
-                child: Text(followState.isFollowing ? 'Unfollow' : 'Follow'),
-              ),
-              const Divider(),
-
-              Expanded(
-                child: BlocBuilder<FeedBloc, FeedState>(
-                  builder: (context, feedState) {
-                    if (feedState is FeedLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (feedState is TweetsByUserLoaded) {
-                      if (feedState.tweets.isEmpty) {
-                        return const Center(child: Text("No tweets yet."));
-                      }
-                      return ListView.builder(
-                        itemCount: feedState.tweets.length,
+                    if (profileProvider.userTweets.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text("No tweets to display."),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: profileProvider.userTweets.length,
                         itemBuilder: (context, index) {
-                          final tweet = feedState.tweets[index];
-                          return ListTile(title: Text(tweet.content));
+                          final tweet = profileProvider.userTweets[index];
+                          final isOwner =
+                              tweet.userId == profileProvider.loggedInUserId;
+
+                          return TweetCard(
+                            tweet: tweet,
+                            currentUserId: profileProvider.loggedInUserId ?? 0,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      TweetDetailScreen(tweetId: tweet.id),
+                                ),
+                              );
+                            },
+                            onLikePressed: () async {
+                              final response = await likeProvider.toggleLike(
+                                tweet.id,
+                              );
+
+                              if (response != null) {
+                                final updatedTweet = tweet.copyWith(
+                                  isLiked: response.likedByCurrentUser,
+                                  likeCount: response.totalLikes,
+                                );
+
+                                profileProvider.updateTweetInList(
+                                  index,
+                                  updatedTweet,
+                                );
+                              }
+                            },
+                            onDelete: isOwner
+                                ? () async {
+                                    await profileProvider.deleteTweet(tweet.id);
+                                    if (!mounted) return;
+                                    await profileProvider.loadProfile(
+                                      username: profileProvider.username,
+                                    );
+                                  }
+                                : null,
+                            onEdit: isOwner ? () {} : null,
+                          );
                         },
-                      );
-                    } else {
-                      return const Center(child: Text("Something went wrong"));
-                    }
-                  },
+                      ),
+                  ],
                 ),
               ),
-            ],
-          );
-        },
+            ),
+    );
+  }
+
+  void _showUserListDialog(
+    BuildContext context,
+    String title,
+    List<String> users,
+  ) {
+    final provider = Provider.of<ProfileProvider>(context, listen: false);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: users.length,
+                itemBuilder: (ctx, i) {
+                  final username = users[i];
+
+                  return FutureBuilder<bool>(
+                    future: provider.isFollowingUser(username),
+                    builder: (context, snapshot) {
+                      final isFollowing = snapshot.data ?? false;
+
+                      return ListTile(
+                        title: Text(username),
+                        trailing: username != provider.loggedInUsername
+                            ? ElevatedButton(
+                                onPressed: () async {
+                                  if (isFollowing) {
+                                    await provider.unfollowUser(username);
+                                  } else {
+                                    await provider.followUser(username);
+                                  }
+
+                                  if (!mounted) return;
+                                  await provider.loadProfile(
+                                    username: provider.username,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isFollowing
+                                      ? Colors.grey[300]
+                                      : Colors.blue,
+                                  foregroundColor: isFollowing
+                                      ? Colors.black
+                                      : Colors.white,
+                                ),
+                                child: Text(
+                                  isFollowing ? 'Unfollow' : 'Follow',
+                                ),
+                              )
+                            : null,
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

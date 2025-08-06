@@ -2,17 +2,21 @@ class Tweet {
   final int id;
   final String content;
   final String username;
-  final DateTime createdDate;
-  final int likeCount;
-  final bool isLiked;
+  final DateTime createdAt;
+  final int userId;
+  final int? likeCount;
+  final bool? isLiked;
+  final List<String>? hashtags;
 
   Tweet({
     required this.id,
     required this.content,
     required this.username,
-    required this.createdDate,
-    this.likeCount = 0,
-    this.isLiked = false,
+    required this.createdAt,
+    required this.userId,
+    this.likeCount,
+    this.isLiked,
+    this.hashtags,
   });
 
   factory Tweet.fromJson(Map<String, dynamic> json) {
@@ -20,30 +24,33 @@ class Tweet {
       id: json['id'],
       content: json['content'],
       username: json['username'],
-      createdDate: DateTime.parse(json['createdDate']),
-      likeCount: json['likeCount'] ?? 0,
-      isLiked: json['liked'] ?? false,
+      userId: json['userId'] ?? 0,
+      createdAt: DateTime.parse(json['createdAt']),
+      likeCount: json['likeCount'],
+      isLiked: json['isLiked'],
+      hashtags: List<String>.from(json['hashtags'] ?? []),
     );
   }
 
-  get createdAt => null;
-
-  /// ✅ Add this copyWith method
   Tweet copyWith({
     int? id,
     String? content,
     String? username,
-    DateTime? createdDate,
+    DateTime? createdAt,
+    int? userId,
     int? likeCount,
     bool? isLiked,
+    List<String>? hashtags,
   }) {
     return Tweet(
       id: id ?? this.id,
       content: content ?? this.content,
       username: username ?? this.username,
-      createdDate: createdDate ?? this.createdDate,
+      createdAt: createdAt ?? this.createdAt,
+      userId: userId ?? this.userId,
       likeCount: likeCount ?? this.likeCount,
       isLiked: isLiked ?? this.isLiked,
+      hashtags: hashtags ?? this.hashtags,
     );
   }
 }

@@ -1,20 +1,15 @@
 import 'package:dio/dio.dart';
-import 'package:subtxt_blog/models/user_search.dart';
-import 'package:subtxt_blog/services/auth_service.dart';
+import '../models/user_search.dart'; // You'll need to define this model based on your backend's UserSearch DTO
 
 class UserApiService {
   final Dio _dio;
+  UserApiService(this._dio);
 
-  UserApiService(AuthService authService)
-    : _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/user')) {
-    _dio.interceptors.add(authService.authInterceptor());
-  }
-
-  //get user by username or keyword
-  Future<List<UserSearch>> searchUsers(String query) async {
+  /// Search users by username
+  Future<List<UserSearch>> searchUsers(String username) async {
     final response = await _dio.get(
-      '/search',
-      queryParameters: {'username': query},
+      '/user/search',
+      queryParameters: {'username': username},
     );
 
     return (response.data as List)

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:subtxt_blog/bloc/auth_bloc.dart';
-import 'package:subtxt_blog/bloc/auth_event.dart';
-import 'package:subtxt_blog/bloc/auth_state.dart';
-import 'package:subtxt_blog/provider/service_provider.dart';
-import 'package:subtxt_blog/screens/main_screen.dart';
+import 'package:subtxt_blog/bloc/auth/auth_bloc.dart';
+import 'package:subtxt_blog/bloc/auth/auth_event.dart';
+import 'package:subtxt_blog/bloc/auth/auth_state.dart';
 import 'package:subtxt_blog/screens/register_screen.dart';
-import 'package:subtxt_blog/widgets/auth_form.dart';
+import '../widgets/auth_form.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,48 +35,60 @@ class _LoginScreenState extends State<LoginScreen> {
             ).showSnackBar(SnackBar(content: Text(state.message)));
           }
 
-          if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => MainScreen(serviceProvider: ServiceProvider()),
+          // Navigate to home or dashboard if needed on success
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            double width = constraints.maxWidth < 600 ? double.infinity : 400;
+
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: width),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Login',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      AuthForm(
+                        isLogin: true,
+                        onSubmit:
+                            ({
+                              required email,
+                              required password,
+                              String? username,
+                            }) {
+                              _submitLogin(email: email, password: password);
+                            },
+                      ),
+                      const SizedBox(height: 12),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text("Don't have an account? Register"),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             );
-          }
-        },
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              children: [
-                const Text(
-                  'Login',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 24),
-                AuthForm(
-                  isLogin: true,
-                  onSubmit:
-                      ({required email, required password, String? username}) {
-                        _submitLogin(email: email, password: password);
-                      },
-                ),
-                const SizedBox(height: 12),
-                if (_isLoading)
-                  const CircularProgressIndicator()
-                else
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text("Don't have an account? Register"),
-                  ),
-              ],
-            ),
-          ),
+          },
         ),
       ),
     );

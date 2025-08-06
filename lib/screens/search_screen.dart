@@ -1,24 +1,27 @@
-import 'dart:async';
+// lib/screens/search_view.dart
+
 import 'package:flutter/material.dart';
-import 'package:subtxt_blog/models/tweet_model.dart';
+import 'package:provider/provider.dart';
 import 'package:subtxt_blog/models/user_search.dart';
+import 'package:subtxt_blog/models/tweet_model.dart';
+import 'package:subtxt_blog/provider/search_provider.dart';
 import 'package:subtxt_blog/screens/profile_screen.dart';
-import 'package:subtxt_blog/screens/tweet_search_screen.dart';
-import 'package:subtxt_blog/services/feed_api_serivce.dart';
-import 'package:subtxt_blog/services/follow_api_service.dart';
+
+import 'package:subtxt_blog/services/profile_api_service.dart';
+import 'package:subtxt_blog/services/tweet_api_serivce.dart';
 import 'package:subtxt_blog/services/user_api_service.dart';
-import 'package:subtxt_blog/widgets/user_card.dart';
+// import your provider
 
 class SearchScreen extends StatefulWidget {
-  final FeedApiService feedApiService;
+  final TweetApiService tweetApiService;
   final UserApiService userApiService;
-  final FollowApiService followApiService;
+  final ProfileApiService profileApiService;
 
   const SearchScreen({
     super.key,
-    required this.feedApiService,
+    required this.tweetApiService,
     required this.userApiService,
-    required this.followApiService,
+    required this.profileApiService,
   });
 
   @override
@@ -27,210 +30,140 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  final List<String> _searchHistory = [];
+  String _searchType = 'tweet'; // or 'user'
 
-  List<UserSearch> _userSuggestions = [];
-  List<Tweet> _tweetResults = [];
-
-  Timer? _debounce;
-  bool _loading = false;
-
-  void _onSearchChanged(String value) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () async {
-      if (value.trim().isNotEmpty) {
-        setState(() => _loading = true);
-        try {
-          final users = await widget.userApiService.searchUsers(value);
-          final tweets = await widget.feedApiService.searchTweets(value);
-
-          if (!mounted) return;
-          setState(() {
-            _userSuggestions = users;
-            _tweetResults = tweets;
-          });
-        } catch (e) {
-          debugPrint('Search error: $e');
-        } finally {
-          if (mounted) setState(() => _loading = false);
-        }
+  void _onSearchChanged(String value, SearchProvider provider) {
+    final query = value.trim();
+    if (query.isEmpty) {
+      provider.clearSearch();
+    } else {
+      if (_searchType == 'tweet') {
+        provider.searchTweetsByKeyword(query);
       } else {
-        if (mounted) {
-          setState(() {
-            _userSuggestions.clear();
-            _tweetResults.clear();
-          });
-        }
+        provider.searchUsers(query);
       }
-    });
-  }
-
-  void _onSearchSubmitted(String value) {
-    if (value.trim().isEmpty) return;
-
-    if (!_searchHistory.contains(value)) {
-      setState(() => _searchHistory.insert(0, value));
     }
-    _focusNode.unfocus();
-    _onSearchChanged(value);
-  }
-
-  void _clearSearch() {
-    _controller.clear();
-    setState(() {
-      _userSuggestions.clear();
-      _tweetResults.clear();
-    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _debounce?.cancel();
-    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          decoration: InputDecoration(
-            hintText: 'Search users, tweets, or hashtags...',
-            border: InputBorder.none,
-            suffixIcon: _controller.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: _clearSearch,
-                  )
-                : null,
-          ),
-          textInputAction: TextInputAction.search,
-          onChanged: _onSearchChanged,
-          onSubmitted: _onSearchSubmitted,
-        ),
+    return ChangeNotifierProvider(
+      create: (_) => SearchProvider(
+        userApiService: widget.userApiService,
+        tweetApiService: widget.tweetApiService,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                if (_searchHistory.isNotEmpty)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Recent Searches',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Search'),
+          actions: [
+            Consumer<SearchProvider>(
+              builder: (_, provider, __) => Padding(
+                padding: const EdgeInsets.only(
+                  right: 20.0,
+                  top: 8,
+                ), // Adjust values as needed
+                child: DropdownButton<String>(
+                  value: _searchType,
+                  dropdownColor: Colors.black,
+                  underline: const SizedBox(), // Removes default underline
+                  iconEnabledColor: Colors.white, // Icon color
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'tweet',
+                      child: Text(
+                        'Tweets',
+                        style: TextStyle(color: Colors.white),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: _searchHistory.map((item) {
-                          return ActionChip(
-                            label: Text(item),
-                            onPressed: () {
-                              _controller.text = item;
-                              _onSearchChanged(item);
+                    ),
+                    DropdownMenuItem(
+                      value: 'user',
+                      child: Text(
+                        'Users',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _searchType = value;
+                        _onSearchChanged(_controller.text, provider);
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Consumer<SearchProvider>(
+          builder: (context, provider, _) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextField(
+                  controller: _controller,
+                  onChanged: (val) => _onSearchChanged(val, provider),
+                  decoration: const InputDecoration(
+                    hintText: 'Search users or tweets...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Builder(
+                  builder: (_) {
+                    if (provider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (provider.errorMessage.isNotEmpty) {
+                      return Center(child: Text(provider.errorMessage));
+                    } else if (provider.currentSearchType == SearchType.none) {
+                      return const Center(child: Text('No results found.'));
+                    } else if (provider.currentSearchType == SearchType.user) {
+                      return ListView.builder(
+                        itemCount: provider.searchedUsers.length,
+                        itemBuilder: (_, i) {
+                          final UserSearch user = provider.searchedUsers[i];
+                          return ListTile(
+                            title: Text('@${user.username}'),
+                            leading: const Icon(Icons.person),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ProfileScreen(username: user.username),
+                                ),
+                              );
                             },
                           );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                if (_userSuggestions.isNotEmpty)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Users',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._userSuggestions.map(
-                        (user) => GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProfileScreen(
-                                  username: user.username,
-                                  feedApiService: widget.feedApiService,
-                                  userApiService: widget.userApiService,
-                                  followApiService: widget.followApiService,
-                                ),
-                              ),
-                            );
-                          },
-                          child: UserCard(
-                            username: user.username,
-                            followerCount: user.followerCount,
-                            followingCount: user.followingCount,
-                            onFollowersTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/followers',
-                                arguments: user.username,
-                              );
-                            },
-                            onFollowingTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/following',
-                                arguments: user.username,
-                              );
-                            },
-                            onTweetsTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/userTweets',
-                                arguments: user.username,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                if (_tweetResults.isNotEmpty)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Tweets',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._tweetResults.map(
-                        (tweet) => ListTile(
-                          title: Text(tweet.content),
-                          subtitle: Text('@${tweet.username}'),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    TweetResultsScreen(keyword: tweet.content),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                if (_userSuggestions.isEmpty &&
-                    _tweetResults.isEmpty &&
-                    _controller.text.isNotEmpty)
-                  const Center(child: Text('No results found')),
-              ],
-            ),
+                        },
+                      );
+                    } else {
+                      return ListView.builder(
+                        itemCount: provider.searchedTweets.length,
+                        itemBuilder: (_, i) {
+                          final Tweet tweet = provider.searchedTweets[i];
+                          return ListTile(
+                            title: Text(tweet.content),
+                            subtitle: Text('@${tweet.username}'),
+                          );
+                        },
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

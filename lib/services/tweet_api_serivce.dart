@@ -1,58 +1,50 @@
 import 'package:dio/dio.dart';
 import 'package:subtxt_blog/models/tweet_model.dart';
 import 'package:subtxt_blog/models/tweet_request.dart';
-import 'package:subtxt_blog/services/auth_service.dart';
 
-class FeedApiService {
+class TweetApiService {
   final Dio _dio;
-
-  FeedApiService(AuthService authService)
-    : _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/tweets')) {
-    _dio.interceptors.add(authService.authInterceptor());
-  }
+  TweetApiService(this._dio);
 
   Future<List<Tweet>> fetchFeed({int page = 0, int size = 10}) async {
     final response = await _dio.get(
-      '/feed',
+      '/tweets/feed',
       queryParameters: {'page': page, 'size': size},
     );
-
     return (response.data['content'] as List)
         .map((json) => Tweet.fromJson(json))
         .toList();
   }
 
   Future<List<Tweet>> fetchAllTweets() async {
-    final response = await _dio.get('/');
+    final response = await _dio.get('/tweets/all');
     return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
   }
 
-  //this the current user api we will use for profile screen
   Future<Tweet> createTweet(TweetRequest request) async {
-    final response = await _dio.post('/', data: request.toJson());
+    final response = await _dio.post('/tweets', data: request.toJson());
     return Tweet.fromJson(response.data);
   }
 
   Future<Tweet> updateTweet(int id, TweetRequest request) async {
-    final response = await _dio.put('/$id', data: request.toJson());
+    final response = await _dio.put('/tweets/$id', data: request.toJson());
     return Tweet.fromJson(response.data);
   }
 
   Future<void> deleteTweet(int id) async {
-    await _dio.delete('/$id');
+    await _dio.delete('/tweets/$id');
   }
 
   Future<Tweet> getTweetById(int id) async {
-    final response = await _dio.get('/$id');
+    final response = await _dio.get('/tweets/$id');
     return Tweet.fromJson(response.data);
   }
 
   Future<List<Tweet>> fetchRecentTweets({int page = 0, int size = 10}) async {
     final response = await _dio.get(
-      '/recent',
+      '/tweets/recent',
       queryParameters: {'page': page, 'size': size},
     );
-
     return (response.data['content'] as List)
         .map((json) => Tweet.fromJson(json))
         .toList();
@@ -60,15 +52,33 @@ class FeedApiService {
 
   Future<List<Tweet>> searchTweets(String query) async {
     final response = await _dio.get(
-      '/search',
+      '/tweets/search',
       queryParameters: {'query': query},
     );
-
     return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
   }
 
-  Future<List<Tweet>> getTweetsByUsername(String username) async {
-    final response = await _dio.get('/user/tweets/$username');
+  Future<List<Tweet>> getTweetsByUsername(
+    String username, {
+    int page = 0,
+    int size = 10,
+  }) async {
+    final response = await _dio.get(
+      '/tweets/user/$username/paginated',
+      queryParameters: {'page': page, 'size': size},
+    );
+    return (response.data['content'] as List)
+        .map((json) => Tweet.fromJson(json))
+        .toList();
+  }
+
+  Future<List<Tweet>> getTweetsByUsernameAll(String username) async {
+    final response = await _dio.get('/tweets/user/$username');
+    return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
+  }
+
+  Future<List<Tweet>> getTweetsByHashtag(String tag) async {
+    final response = await _dio.get('/tweets/hashtag/$tag');
     return (response.data as List).map((json) => Tweet.fromJson(json)).toList();
   }
 }

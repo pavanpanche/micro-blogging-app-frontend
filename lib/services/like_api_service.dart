@@ -1,27 +1,25 @@
 import 'package:dio/dio.dart';
-import 'package:subtxt_blog/services/auth_service.dart';
-
+import '../models/like_response.dart'; // Make sure to define this model based on your LikeResponse DTO
 
 class LikeApiService {
   final Dio _dio;
+  LikeApiService(this._dio);
 
-  LikeApiService(AuthService authService)
-      : _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/likes')) {
-    _dio.interceptors.add(authService.authInterceptor());
+  /// Toggle like/unlike for a tweet
+  Future<LikeResponse> toggleLike(int tweetId) async {
+    final response = await _dio.post('/likes/toggle/$tweetId');
+    return LikeResponse.fromJson(response.data);
   }
 
-  Future<bool> toggleLike(int tweetId) async {
-    final res = await _dio.post('/toggle/$tweetId');
-    return res.data['liked'] as bool;
-  }
-
+  /// Get total like count for a tweet
   Future<int> getLikeCount(int tweetId) async {
-    final res = await _dio.get('/count/$tweetId');
-    return int.tryParse(res.data.toString()) ?? 0;
+    final response = await _dio.get('/likes/count/$tweetId');
+    return response.data as int;
   }
 
+  /// Check if current user has liked a tweet
   Future<bool> isLiked(int tweetId) async {
-    final res = await _dio.get('/status/$tweetId');
-    return res.data.toString() == 'true';
+    final response = await _dio.get('/likes/status/$tweetId');
+    return response.data as bool;
   }
 }

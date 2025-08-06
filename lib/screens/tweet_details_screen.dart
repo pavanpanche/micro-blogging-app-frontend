@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:subtxt_blog/models/tweet_model.dart';
-import 'package:subtxt_blog/services/feed_api_serivce.dart';
+import 'package:subtxt_blog/provider/tweet_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class TweetDetailScreen extends StatefulWidget {
   final int tweetId;
-  final FeedApiService feedApiService;
 
-  const TweetDetailScreen({
-    super.key,
-    required this.tweetId,
-    required this.feedApiService,
-  });
+  const TweetDetailScreen({super.key, required this.tweetId});
 
   @override
   State<TweetDetailScreen> createState() => _TweetDetailScreenState();
@@ -23,7 +19,8 @@ class _TweetDetailScreenState extends State<TweetDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _tweetFuture = widget.feedApiService.getTweetById(widget.tweetId);
+    final tweetProvider = Provider.of<TweetProvider>(context, listen: false);
+    _tweetFuture = tweetProvider.getTweetById(widget.tweetId);
   }
 
   @override
@@ -56,7 +53,7 @@ class _TweetDetailScreenState extends State<TweetDetailScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  timeago.format(tweet.createdDate),
+                  timeago.format(tweet.createdAt),
                   style: const TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 16),
@@ -65,11 +62,15 @@ class _TweetDetailScreenState extends State<TweetDetailScreen> {
                 Row(
                   children: [
                     Icon(
-                      tweet.isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: tweet.isLiked ? Colors.red : Colors.grey,
+                      (tweet.isLiked ?? false)
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: (tweet.isLiked ?? false)
+                          ? Colors.red
+                          : Colors.grey,
                     ),
                     const SizedBox(width: 8),
-                    Text('${tweet.likeCount} Likes'),
+                    Text('${tweet.likeCount ?? 0} Likes'),
                   ],
                 ),
               ],

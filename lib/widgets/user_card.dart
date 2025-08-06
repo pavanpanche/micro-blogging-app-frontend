@@ -4,7 +4,6 @@ class UserCard extends StatelessWidget {
   final String username;
   final int followerCount;
   final int followingCount;
-
   final VoidCallback onFollowersTap;
   final VoidCallback onFollowingTap;
   final VoidCallback onTweetsTap;
@@ -19,21 +18,35 @@ class UserCard extends StatelessWidget {
     required this.onTweetsTap,
   });
 
-  Widget _buildStatBox(String label, int count, VoidCallback onTap) {
+  /// Adjusts opacity by percent (0.0–1.0) using withAlpha
+  Color withAlphaPercent(Color color, double percent) {
+    final clamped = percent.clamp(0.0, 1.0);
+    return color.withAlpha((clamped * 255).round());
+  }
+
+  Widget _buildStatBox(
+    BuildContext context,
+    String label,
+    int count,
+    VoidCallback onTap,
+  ) {
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+
     return Expanded(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: withAlphaPercent(accent, 0.08),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Colors.black12,
+                color: withAlphaPercent(Colors.black, 0.05), // ✅ fixed
                 blurRadius: 4,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -41,15 +54,20 @@ class UserCard extends StatelessWidget {
             children: [
               Text(
                 count.toString(),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: withAlphaPercent(
+                    theme.colorScheme.onSurface,
+                    0.6,
+                  ), // ✅ fixed
+                ),
               ),
             ],
           ),
@@ -60,40 +78,54 @@ class UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 2,
       child: InkWell(
         onTap: onTweetsTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
           child: Column(
             children: [
               CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.blueAccent,
+                radius: 30,
+                backgroundColor: withAlphaPercent(accent, 0.12),
                 child: Text(
                   username[0].toUpperCase(),
-                  style: const TextStyle(fontSize: 24, color: Colors.white),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 "@$username",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStatBox('Followers', followerCount, onFollowersTap),
-                  const SizedBox(width: 8),
-                  _buildStatBox('Following', followingCount, onFollowingTap),
+                  _buildStatBox(
+                    context,
+                    'Followers',
+                    followerCount,
+                    onFollowersTap,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildStatBox(
+                    context,
+                    'Following',
+                    followingCount,
+                    onFollowingTap,
+                  ),
                 ],
               ),
             ],
